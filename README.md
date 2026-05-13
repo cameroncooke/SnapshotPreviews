@@ -200,7 +200,7 @@ Link the `SnapshotPreferences` product to your app target to customize individua
 > [!TIP]
 > `PreviewVariants` simplifies snapshot testing by ensuring a consistent set of variants and that every view has a name.
 
-Rendering the same view under multiple variants (dark mode, RTL, large text, accessibility) gives you broader coverage from a single preview. SwiftUI provides most of these (`.dynamicTypeSize(.xxxLarge)`, `.environment(\.layoutDirection, .rightToLeft)`, etc.). The package adds `.snapshotAccessibility(true)`, which overlays VoiceOver elements on the snapshot.
+Rendering the same view under multiple variants (dark mode, RTL, large text, accessibility) gives you broader coverage from a single preview. `SnapshotTest` renders every variant emitted by the preview, so each `previewVariant(named:)` below becomes its own snapshot image and sidecar. SwiftUI provides most variant inputs (`.dynamicTypeSize(.xxxLarge)`, `.environment(\.layoutDirection, .rightToLeft)`, etc.). The package adds `.snapshotAccessibility(true)`, which overlays VoiceOver elements on the snapshot.
 
 The [`PreviewVariants` view](https://github.com/EmergeTools/SnapshotPreviews/blob/main/Examples/DemoApp/DemoApp/TestViews/PreviewVariants.swift) in the example app automates RTL, landscape, accessibility, dark mode, and large-text variants:
 
