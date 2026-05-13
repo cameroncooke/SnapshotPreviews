@@ -59,35 +59,65 @@ override class func excludedSnapshotPreviewModules() -> [String]? { ["LegacyModu
 > [!NOTE]
 > Preview macros (`#Preview("Display Name")`) produce snapshot names based on file path and display name, for example: `MyModule/MyFile.swift:Display Name`.
 
-# Exporting Snapshots for Sentry
+# Uploading Snapshots to Sentry
 
-To upload snapshots to [Sentry Snapshots](https://docs.sentry.io/product/snapshots/) (or any external service), set `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` in your test scheme or `xcodebuild` invocation. When the variable is set, `SnapshotTest` writes images directly to that directory at test time instead of attaching them to the `.xcresult` bundle.
+`SnapshotPreviews` is the recommended iOS feeder for [Sentry Snapshots](https://docs.sentry.io/product/snapshots/). The flow has two steps: `xcodebuild test` writes PNGs + JSON sidecars to a directory, then `sentry-cli build snapshots` uploads that directory.
 
-```yaml
-env:
-  TEST_RUNNER_SNAPSHOTS_EXPORT_DIR: "${{ github.workspace }}/snapshot-images"
-```
+### 1. Export the snapshots from your test run
 
-Or from the command line:
+Set `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` on the test invocation. When set, `SnapshotTest` writes images directly to that directory instead of attaching them to the `.xcresult` bundle.
 
 ```bash
-TEST_RUNNER_SNAPSHOTS_EXPORT_DIR=/tmp/snapshots xcodebuild test \
+TEST_RUNNER_SNAPSHOTS_EXPORT_DIR="$PWD/snapshot-images" \
+xcodebuild test \
   -scheme MyApp \
   -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
 ```
 
 > [!NOTE]
-> The `TEST_RUNNER_` prefix is how Xcode forwards an environment variable into the test runner process. Inside the runner the variable is read as `SNAPSHOTS_EXPORT_DIR`.
+> The `TEST_RUNNER_` prefix is how Xcode forwards an environment variable from `xcodebuild` into the test runner process. Inside the runner the variable is read as `SNAPSHOTS_EXPORT_DIR`.
 
-### What gets exported
-
-For every rendered preview, two files are written to the export directory:
+For every rendered preview, two files are written:
 
 - **`<name>.png`** — the rendered preview image.
-- **`<name>.json`** — metadata sidecar containing the display name, group, optional diff threshold, and a `context` block with the test name, simulator info, and preview attributes (orientation, color scheme, source line, etc.).
+- **`<name>.json`** — metadata sidecar containing `display_name`, `group`, `diff_threshold`, and a `context` block with the test name, simulator info, and preview attributes (orientation, color scheme, source line, etc.). The `context` fields are surfaced on the snapshot's detail page in Sentry's UI.
 
-No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only PNGs and their JSON sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
+No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only the PNGs and sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
+
+### 2. Upload to Sentry with `sentry-cli`
+
+Requires [sentry-cli](https://docs.sentry.io/cli/installation/) 3.4.0 or later. The CLI auto-detects Git metadata from common CI environments; just point it at the export directory.
+
+```bash
+sentry-cli build snapshots "$PWD/snapshot-images" \
+  --auth-token "$SENTRY_AUTH_TOKEN" \
+  --app-id com.example.MyApp \
+  --project my-ios-project
+```
+
+A complete GitHub Actions step:
+
+```yaml
+- name: Run snapshot tests
+  env:
+    TEST_RUNNER_SNAPSHOTS_EXPORT_DIR: ${{ github.workspace }}/snapshot-images
+  run: |
+    xcodebuild test \
+      -scheme MyApp \
+      -sdk iphonesimulator \
+      -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+
+- name: Upload snapshots to Sentry
+  env:
+    SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  run: |
+    sentry-cli build snapshots "$GITHUB_WORKSPACE/snapshot-images" \
+      --app-id com.example.MyApp \
+      --project my-ios-project
+```
+
+See Sentry's [iOS Snapshots setup](https://docs.sentry.io/platforms/apple/guides/ios/snapshots/) and [CI integration](https://docs.sentry.io/product/snapshots/integrating-into-ci/) docs for sharding across simulators, base/head SHA pinning, and the Fastlane plugin alternative.
 
 # Tips
 
@@ -126,7 +156,7 @@ extension ProcessInfo {
 > [!TIP]
 > `PreviewVariants` simplifies snapshot testing by ensuring a consistent set of variants and that every view has a name.
 
-Rendering the same view under multiple variants (dark mode, RTL, large text, accessibility) gives you broader coverage from a single preview. SwiftUI provides most of these (`.dynamicTypeSize(.xxxLarge)`, `.environment(\.layoutDirection, .rightToLeft)`, etc.). The package adds `.emergeAccessibility(true)`, which overlays VoiceOver elements on the snapshot.
+Rendering the same view under multiple variants (dark mode, RTL, large text, accessibility) gives you broader coverage from a single preview. SwiftUI provides most of these (`.dynamicTypeSize(.xxxLarge)`, `.environment(\.layoutDirection, .rightToLeft)`, etc.). The package adds `.snapshotAccessibility(true)`, which overlays VoiceOver elements on the snapshot.
 
 The [`PreviewVariants` view](https://github.com/EmergeTools/SnapshotPreviews/blob/main/Examples/DemoApp/DemoApp/TestViews/PreviewVariants.swift) in the example app automates RTL, landscape, accessibility, dark mode, and large-text variants:
 

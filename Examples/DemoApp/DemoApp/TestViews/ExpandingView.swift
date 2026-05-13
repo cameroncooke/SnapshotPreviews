@@ -27,6 +27,6 @@ struct ExpandingView: View {
 struct ExpandingView_Previews: PreviewProvider {
   static var previews: some View {
     ExpandingView()
-    ExpandingView().emergeExpansion(false)
+    ExpandingView().snapshotExpansion(false)
   }
 }
