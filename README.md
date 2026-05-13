@@ -83,6 +83,17 @@ For every rendered preview, two files are written:
 - **`<name>.png`** — the rendered preview image.
 - **`<name>.json`** — metadata sidecar containing `display_name`, `group`, `diff_threshold`, and a `context` block with the test name, simulator info, and preview attributes (orientation, color scheme, source line, etc.). The `context` fields are surfaced on the snapshot's detail page in Sentry's UI.
 
+You can customize the Sentry Snapshots diff threshold for a specific preview with `.diffThreshold(...)` from the `SnapshotPreferences` product. The exporter writes this value to the sidecar as `diff_threshold`. For example, `.diffThreshold(0.05)` writes `"diff_threshold": 0.05`, allowing up to a 5% difference for that snapshot.
+
+```swift
+import SnapshotPreferences
+
+#Preview("Map") {
+  MapPreview()
+    .diffThreshold(0.05)
+}
+```
+
 No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only the PNGs and sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
 
 ### 2. Upload to Sentry with `sentry-cli`
@@ -150,6 +161,16 @@ extension ProcessInfo {
   }
 }
 ```
+
+### Snapshot modifiers
+
+Link the `SnapshotPreferences` product to your app target to customize individual previews before they are rendered by `SnapshotTest`.
+
+| Modifier | Use it when | Effect on the snapshot |
+| --- | --- | --- |
+| `.snapshotAccessibility(true)` | You want an accessibility-focused variant. | On iOS, renders the snapshot through the accessibility overlay wrapper configured by your `SnapshotTest`, showing accessibility elements and labels instead of the plain view. The exported sidecar also records that accessibility was enabled. |
+| `.snapshotRenderingMode(.coreAnimation)` | The default renderer misses, flakes on, or incorrectly draws a view. | Changes the pixel capture backend. For example, `.coreAnimation` uses the layer tree, `.uiView` uses UIKit hierarchy drawing, and `.window` captures the full window. Different modes can affect blur/materials, maps, animations, and other renderer-sensitive content. |
+| `.snapshotExpansion(false)` | You want to preserve the visible scroll viewport instead of capturing all scroll content. | By default, scroll views are expanded so the snapshot includes their full content. Setting this to `false` keeps the scroll view at its normal visible height. |
 
 ### Variants
 
