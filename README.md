@@ -40,7 +40,7 @@ class DemoAppPreviewTest: SnapshotTest {
 }
 ```
 
-By default each rendered preview is attached to the XCTest results bundle as a PNG. For CI use, see [Exporting snapshots for Sentry](#exporting-snapshots-for-sentry) below.
+By default each rendered preview is attached to the XCTest results bundle as a PNG. To write the rendered snapshots to disk locally, run `xcodebuild test` with `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` set and inspect the generated PNG and JSON files in that directory. For CI use, see [Exporting snapshots for Sentry](#exporting-snapshots-for-sentry) below.
 
 ![Screenshot of Xcode test output](https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/testOutput.png)
 
