@@ -44,7 +44,7 @@ By default each rendered preview is attached to the XCTest results bundle as a P
 
 ![Screenshot of Xcode test output](https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/testOutput.png)
 
-### Filtering by module
+## Filtering by module
 
 If your app links several frameworks, you can scope discovery to specific modules:
 
@@ -65,7 +65,7 @@ override class func excludedSnapshotPreviewModules() -> [String]? { ["LegacyModu
 
 ![Sentry Snapshots visual diff UI](https://github.com/user-attachments/assets/3a9e5c84-7954-4e73-89a1-3e5a181b7c7c)
 
-### 1. Export the snapshots from your test run
+## 1. Export the snapshots from your test run
 
 Set `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` on the test invocation. When set, `SnapshotTest` writes images directly to that directory instead of attaching them to the `.xcresult` bundle.
 
@@ -107,7 +107,7 @@ import SnapshotPreferences
 
 No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only the PNGs and sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
 
-### 2. Upload to Sentry
+## 2. Upload to Sentry
 
 Choose one of the upload options below.
 
@@ -151,7 +151,7 @@ See Sentry's [CI integration docs](https://docs.sentry.io/product/snapshots/inte
 
 # Tips
 
-### Unique display names
+## Unique display names
 
 Give every preview a unique display name. This is what shows up in XCTest results and in the exported filenames / metadata:
 
@@ -169,11 +169,11 @@ struct MyView_Previews: PreviewProvider {
 
 Display names should be unique within each `PreviewProvider`, or within a file when using preview macros.
 
-### Snapshot best practices
+## Snapshot best practices
 
 Snapshot previews should be deterministic. Avoid live network calls, timers, animations that do not settle, locale-dependent data, and dates generated from the current clock. Prefer fixed fixtures and mocked dependencies so the same preview renders the same pixels in Xcode, local test runs, and CI.
 
-### Detecting the snapshot environment
+## Detecting the snapshot environment
 
 Set `XCODE_RUNNING_FOR_PREVIEWS=1` in your unit test scheme to mirror the variable Xcode sets when rendering live previews. You can then disable preview-unfriendly behavior (logging, analytics, network calls) with a single check:
 
@@ -185,7 +185,7 @@ extension ProcessInfo {
 }
 ```
 
-### Snapshot modifiers
+## Snapshot modifiers
 
 Link the `SnapshotPreferences` product to your app target to customize individual previews before they are rendered by `SnapshotTest`.
 
@@ -195,7 +195,7 @@ Link the `SnapshotPreferences` product to your app target to customize individua
 | `.snapshotRenderingMode(.coreAnimation)` | The default renderer misses, flakes on, or incorrectly draws a view. | Changes the pixel capture backend. For example, `.coreAnimation` uses the layer tree, `.uiView` uses UIKit hierarchy drawing, and `.window` captures the full window. Different modes can affect blur/materials, maps, animations, and other renderer-sensitive content. |
 | `.snapshotExpansion(false)` | You want to preserve the visible scroll viewport instead of capturing all scroll content. | By default, scroll views are expanded so the snapshot includes their full content. Setting this to `false` keeps the scroll view at its normal visible height. |
 
-### Variants
+## Variants
 
 > [!TIP]
 > `PreviewVariants` simplifies snapshot testing by ensuring a consistent set of variants and that every view has a name.
@@ -223,11 +223,11 @@ struct MyView_Previews: PreviewProvider {
 
 # Additional Features
 
-### Preview rendering check (no PNGs)
+## Preview rendering check (no PNGs)
 
 If you only want to verify that every preview lays out without crashing — for example, to catch a missing `@EnvironmentObject` — inherit from `PreviewLayoutTest` instead of `SnapshotTest`. It runs the same discovery pipeline but skips the image render, so it's significantly faster. This gives you *preview coverage* (every preview was exercised); it does not produce Xcode code-coverage data.
 
-### Preview Gallery
+## Preview Gallery
 
 `PreviewGallery` is an interactive SwiftUI view that turns your previews into a browsable gallery of components — useful for internal builds where Xcode isn't available. Link your app to the `PreviewGallery` product and present it from wherever makes sense:
 
@@ -253,7 +253,7 @@ struct InternalSettingsView: View {
 }
 ```
 
-### Accessibility audits
+## Accessibility audits
 
 Xcode [accessibility audits](https://developer.apple.com/documentation/xctest/xcuiapplication/4191487-performaccessibilityaudit) can run on every preview as part of a UI test. Inherit from `AccessibilityPreviewTest` and override the audit type / issue handler as needed:
 
