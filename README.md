@@ -83,9 +83,18 @@ xcodebuild test \
 For every rendered preview, two files are written:
 
 - **`<name>.png`** — the rendered preview image.
-- **`<name>.json`** — metadata sidecar containing `display_name`, `group`, `diff_threshold`, and a `context` block with the test name, simulator info, and preview attributes (orientation, color scheme, source line, etc.). The `context` fields are surfaced on the snapshot's detail page in Sentry's UI.
+- **`<name>.json`** — metadata sidecar used by Sentry Snapshots.
 
-You can customize the Sentry Snapshots diff threshold for a specific preview with `.diffThreshold(...)` from the `SnapshotPreferences` product. The exporter writes this value to the sidecar as `diff_threshold`. For example, `.diffThreshold(0.05)` writes `"diff_threshold": 0.05`, allowing up to a 5% difference for that snapshot.
+The sidecar includes:
+
+| Field | Description |
+| --- | --- |
+| `display_name` | Snapshot name shown in Sentry. Generated from the preview name, file path, and module so exported filenames stay stable and unambiguous. |
+| `group` | Grouping key Sentry uses to organize related snapshots. Generated from the preview name, file path, and module. |
+| `diff_threshold` | Allowed visual difference for this snapshot. See details below. |
+| `context` | Supporting metadata such as test name, simulator info, orientation, color scheme, source line, and preview attributes. These fields are surfaced on the snapshot detail page in Sentry's UI. |
+
+Use the `.diffThreshold(...)` view modifier from the `SnapshotPreferences` product to customize the allowed visual difference for a specific preview. For example, `.diffThreshold(0.05)` allows up to a 5% difference for that snapshot.
 
 ```swift
 import SnapshotPreferences
