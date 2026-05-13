@@ -168,7 +168,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FAB3A5C12C9C705300BF8930 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
-				FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews-iOS" */,
+				FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FA8220082C9C5DB400DA1302 /* Products */;
@@ -480,9 +480,9 @@
 				minimumVersion = 1.17.5;
 			};
 		};
-		FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews-iOS" */ = {
+		FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/EmergeTools/SnapshotPreviews-iOS";
+			repositoryURL = "https://github.com/EmergeTools/SnapshotPreviews";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.0.0;
@@ -502,7 +502,7 @@
 		};
 		FAB3A5C52C9C706100BF8930 /* PreviewGallery */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews-iOS" */;
+			package = FAB3A5C42C9C706100BF8930 /* XCRemoteSwiftPackageReference "SnapshotPreviews" */;
 			productName = PreviewGallery;
 		};
 /* End XCSwiftPackageProductDependency section */
