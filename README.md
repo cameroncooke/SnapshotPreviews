@@ -107,9 +107,13 @@ import SnapshotPreferences
 
 No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only the PNGs and sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
 
-### 2. Upload to Sentry with `sentry-cli`
+### 2. Upload to Sentry
 
-Requires [sentry-cli](https://docs.sentry.io/cli/installation/) 3.4.0 or later. The CLI auto-detects Git metadata from common CI environments; just point it at the export directory.
+Choose one of the upload options below.
+
+#### Option A: `sentry-cli`
+
+Use [sentry-cli](https://docs.sentry.io/cli/installation/) 3.4.0 or later and point it at the export directory:
 
 ```bash
 sentry-cli build snapshots "$PWD/snapshot-images" \
@@ -139,7 +143,11 @@ A complete GitHub Actions step:
       --project my-ios-project
 ```
 
-See Sentry's [iOS Snapshots setup](https://docs.sentry.io/platforms/apple/guides/ios/snapshots/) and [CI integration](https://docs.sentry.io/product/snapshots/integrating-into-ci/) docs for sharding across simulators, base/head SHA pinning, and the Fastlane plugin alternative.
+#### Option B: Fastlane
+
+Use Sentry's Fastlane integration if your CI already uploads Apple artifacts through Fastlane. See Sentry's [iOS Snapshots setup docs](https://docs.sentry.io/platforms/apple/guides/ios/snapshots/#step-3-integrate-into-ci) for the Fastlane configuration.
+
+See Sentry's [CI integration docs](https://docs.sentry.io/product/snapshots/integrating-into-ci/) for sharding across simulators and base/head SHA pinning.
 
 # Tips
 
