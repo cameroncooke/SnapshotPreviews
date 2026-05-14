@@ -19,13 +19,13 @@ struct ExpansionPreferenceKey: PreferenceKey {
 }
 
 extension View {
-    /// Applies an expansion effect to the view's snapshot.
+    /// Controls scroll-view expansion when snapshotting the view.
     ///
-    /// Use this method to control the emerge expansion effect on a view. When enabled,
-    /// the view's first scrollview will be expanded to show all content in the snapshot.
+    /// When enabled, the view's first scrollview is expanded to show all of its content
+    /// in the snapshot instead of being clipped to the visible area.
     ///
-    /// - Parameter enabled: A Boolean value that determines whether the emerge expansion
-    ///   effect is applied. If `nil`, the effect will default to `true`.
+    /// - Parameter enabled: A Boolean value that determines whether expansion is applied.
+    ///   If `nil`, the effect will default to `true`.
     ///
     /// - Returns: A view with the expansion preference applied.
     ///
@@ -33,12 +33,12 @@ extension View {
     /// ```swift
     /// struct ContentView: View {
     ///     var body: some View {
-    ///         Text("Hello, World!")
-    ///             .emergeExpansion(false)
+    ///         ScrollView { ... }
+    ///             .snapshotExpansion(false)
     ///     }
     /// }
     /// ```
-    public func emergeExpansion(_ enabled: Bool?) -> some View {
+    public func snapshotExpansion(_ enabled: Bool?) -> some View {
         preference(key: ExpansionPreferenceKey.self, value: enabled)
     }
 }

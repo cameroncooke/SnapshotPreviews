@@ -74,7 +74,7 @@ extension NamedViewModifier {
   @available(visionOS, unavailable)
   @available(tvOS, unavailable)
   static var accessibility: NamedViewModifier {
-    .init(name: "Accessibility", value: { $0.emergeAccessibility(true) })
+    .init(name: "Accessibility", value: { $0.snapshotAccessibility(true) })
   }
 
   static var rtl: NamedViewModifier {

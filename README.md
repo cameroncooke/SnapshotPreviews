@@ -2,26 +2,238 @@
 
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FEmergeTools%2FSnapshotPreviews%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/EmergeTools/SnapshotPreviews)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FEmergeTools%2FSnapshotPreviews%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/EmergeTools/SnapshotPreviews)
-[![](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.emergetools.com%2Fapi%2Fv2%2Fpublic_new_build%3FexampleId%3Dsnapshotpreviews-ios.PreviewGallery%26platform%3Dios%26badgeOption%3Dversion_and_max_install_size%26buildType%3Drelease&query=$.badgeMetadata&label=PreviewGallery&logo=apple)](https://www.emergetools.com/app/example/ios/snapshotpreviews-ios.PreviewGallery/release?utm_campaign=badge-data)
-[![](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.emergetools.com%2Fapi%2Fv2%2Fpublic_new_build%3FexampleId%3Dsnapshotpreviews-ios.SnapshottingTests%26platform%3Dios%26badgeOption%3Dversion_and_max_install_size%26buildType%3Drelease&query=$.badgeMetadata&label=SnapshottingTests&logo=apple)](https://www.emergetools.com/app/example/ios/snapshotpreviews-ios.SnapshottingTests/release?utm_campaign=badge-data)
 
-An all-in-one snapshot testing solution built on Xcode previews. Automatic browsable gallery of previews, and no-code snapshot generation with XCTest. Supports SwiftUI and UIKit previews using `PreviewProvider` or `#Preview` and works on all Apple platforms (iOS/macOS/watchOS/tvOS/visionOS).
+Generate snapshot images from your Xcode previews with zero test code, and export them to disk for upload to [Sentry Snapshots](https://docs.sentry.io/product/snapshots/) or any other visual diffing service. Works with SwiftUI and UIKit previews using `PreviewProvider` or `#Preview`, on all Apple platforms (iOS / macOS / watchOS / tvOS / visionOS).
 
-- 🖼️ Browse previews on device as part of your app using the `PreviewGallery`, no Xcode required.
-- 📸 Snapshot Xcode previews automatically in a XCTest without writing any test code.
-- ♿ Run accessibility audits on all your previews in a XCUITest, still without writing any test code.
+# Installation
 
-# Features
+Add the package as a Swift Package Manager dependency using the repository URL:
+
+```
+https://github.com/EmergeTools/SnapshotPreviews
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/image2.png" />
+</p>
+
+Link your XCTest target to the `SnapshottingTests` product. If you also want to customize per-preview rendering (e.g. precision, layout) you can link `SnapshotPreferences` to your app target.
+
+# Generating Snapshots
+
+Create a test class that inherits from `SnapshotTest`. There are no test functions to write — they're added at runtime, one per discovered preview:
+
+```swift
+import SnapshottingTests
+
+class DemoAppPreviewTest: SnapshotTest {
+
+  // Optional: return preview type names like "MyApp.MyView_Previews" to render only a subset.
+  override class func snapshotPreviews() -> [String]? {
+    return nil
+  }
+
+  // Optional: exclude specific previews from rendering.
+  override class func excludedSnapshotPreviews() -> [String]? {
+    return nil
+  }
+}
+```
+
+By default each rendered preview is attached to the XCTest results bundle as a PNG. To write the rendered snapshots to disk locally, run `xcodebuild test` with `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` set and inspect the generated PNG and JSON files in that directory. For CI use, see [Exporting snapshots for Sentry](#exporting-snapshots-for-sentry) below.
+
+![Screenshot of Xcode test output](https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/testOutput.png)
+
+## Filtering by module
+
+If your app links several frameworks, you can scope discovery to specific modules:
+
+```swift
+// Only snapshot previews from these modules
+override class func snapshotPreviewModules() -> [String]? { ["MyFeatureModule"] }
+
+// Skip previews from these modules
+override class func excludedSnapshotPreviewModules() -> [String]? { ["LegacyModule"] }
+```
+
+> [!NOTE]
+> Preview macros (`#Preview("Display Name")`) produce snapshot names based on file path and display name, for example: `MyModule/MyFile.swift:Display Name`.
+
+# Uploading Snapshots to Sentry
+
+`SnapshotPreviews` is the recommended iOS feeder for [Sentry Snapshots](https://docs.sentry.io/product/snapshots/). The flow has two steps: `xcodebuild test` writes PNGs + JSON sidecars to a directory, then `sentry-cli build snapshots` uploads that directory.
+
+![Sentry Snapshots visual diff UI](https://github.com/user-attachments/assets/3a9e5c84-7954-4e73-89a1-3e5a181b7c7c)
+
+## 1. Export the snapshots from your test run
+
+Set `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` on the test invocation. When set, `SnapshotTest` writes images directly to that directory instead of attaching them to the `.xcresult` bundle.
+
+```bash
+TEST_RUNNER_SNAPSHOTS_EXPORT_DIR="$PWD/snapshot-images" \
+xcodebuild test \
+  -scheme MyApp \
+  -sdk iphonesimulator \
+  -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+```
+
+> [!NOTE]
+> The `TEST_RUNNER_` prefix is how Xcode forwards an environment variable from `xcodebuild` into the test runner process. Inside the runner the variable is read as `SNAPSHOTS_EXPORT_DIR`.
+
+For every rendered preview, two files are written:
+
+- **`<name>.png`** — the rendered preview image.
+- **`<name>.json`** — metadata sidecar used by Sentry Snapshots.
+
+The sidecar includes:
+
+| Field | Description |
+| --- | --- |
+| `display_name` | Snapshot name shown in Sentry. Generated from the preview name, file path, and module so exported filenames stay stable and unambiguous. |
+| `group` | Grouping key Sentry uses to organize related snapshots. Generated from the preview name, file path, and module. |
+| `diff_threshold` | Allowed visual difference for this snapshot. See details below. |
+| `context` | Supporting metadata such as test name, simulator info, orientation, color scheme, source line, and preview attributes. These fields are surfaced on the snapshot detail page in Sentry's UI. |
+
+Use the `.diffThreshold(...)` view modifier from the `SnapshotPreferences` product to customize the allowed visual difference for a specific preview. For example, `.diffThreshold(0.05)` allows up to a 5% difference for that snapshot.
+
+```swift
+import SnapshotPreferences
+
+#Preview("Map") {
+  MapPreview()
+    .diffThreshold(0.05)
+}
+```
+
+No Xcode code-coverage data (`.profraw` / `.profdata`) is written by the exporter — only the PNGs and sidecars. If you need code coverage from the same test run, enable it on the scheme as usual; coverage output goes to the `.xcresult` bundle independently.
+
+## 2. Upload to Sentry
+
+Choose one of the upload options below.
+
+#### Option A: `sentry-cli`
+
+Use [sentry-cli](https://docs.sentry.io/cli/installation/) 3.4.0 or later and point it at the export directory:
+
+```bash
+sentry-cli build snapshots "$PWD/snapshot-images" \
+  --auth-token "$SENTRY_AUTH_TOKEN" \
+  --app-id com.example.MyApp \
+  --project my-ios-project
+```
+
+A complete GitHub Actions step:
+
+```yaml
+- name: Run snapshot tests
+  env:
+    TEST_RUNNER_SNAPSHOTS_EXPORT_DIR: ${{ github.workspace }}/snapshot-images
+  run: |
+    xcodebuild test \
+      -scheme MyApp \
+      -sdk iphonesimulator \
+      -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+
+- name: Upload snapshots to Sentry
+  env:
+    SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  run: |
+    sentry-cli build snapshots "$GITHUB_WORKSPACE/snapshot-images" \
+      --app-id com.example.MyApp \
+      --project my-ios-project
+```
+
+#### Option B: Fastlane
+
+Use Sentry's Fastlane integration if your CI already uploads Apple artifacts through Fastlane. See Sentry's [iOS Snapshots setup docs](https://docs.sentry.io/platforms/apple/guides/ios/snapshots/#step-3-integrate-into-ci) for the Fastlane configuration.
+
+See Sentry's [CI integration docs](https://docs.sentry.io/product/snapshots/integrating-into-ci/) for sharding across simulators and base/head SHA pinning.
+
+# Tips
+
+## Unique display names
+
+Give every preview a unique display name. This is what shows up in XCTest results and in the exported filenames / metadata:
+
+```swift
+struct MyView_Previews: PreviewProvider {
+  static var previews: some View {
+    MyView().previewDisplayName("My Display Name")
+  }
+}
+
+#Preview("My Display Name") {
+  MyView()
+}
+```
+
+Display names should be unique within each `PreviewProvider`, or within a file when using preview macros.
+
+## Snapshot best practices
+
+Snapshot previews should be deterministic. Avoid live network calls, timers, animations that do not settle, locale-dependent data, and dates generated from the current clock. Prefer fixed fixtures and mocked dependencies so the same preview renders the same pixels in Xcode, local test runs, and CI.
+
+## Detecting the snapshot environment
+
+Set `XCODE_RUNNING_FOR_PREVIEWS=1` in your unit test scheme to mirror the variable Xcode sets when rendering live previews. You can then disable preview-unfriendly behavior (logging, analytics, network calls) with a single check:
+
+```swift
+extension ProcessInfo {
+  var isRunningPreviews: Bool {
+    environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+  }
+}
+```
+
+## Snapshot modifiers
+
+Link the `SnapshotPreferences` product to your app target to customize individual previews before they are rendered by `SnapshotTest`.
+
+| Modifier | Use it when | Effect on the snapshot |
+| --- | --- | --- |
+| `.snapshotAccessibility(true)` | You want an accessibility-focused variant. | On iOS, renders the snapshot through the accessibility overlay wrapper configured by your `SnapshotTest`, showing accessibility elements and labels instead of the plain view. The exported sidecar also records that accessibility was enabled. |
+| `.snapshotRenderingMode(.coreAnimation)` | The default renderer misses, flakes on, or incorrectly draws a view. | Changes the pixel capture backend. For example, `.coreAnimation` uses the layer tree, `.uiView` uses UIKit hierarchy drawing, and `.window` captures the full window. Different modes can affect blur/materials, maps, animations, and other renderer-sensitive content. |
+| `.snapshotExpansion(false)` | You want to preserve the visible scroll viewport instead of capturing all scroll content. | By default, scroll views are expanded so the snapshot includes their full content. Setting this to `false` keeps the scroll view at its normal visible height. |
+
+## Variants
+
+> [!TIP]
+> `PreviewVariants` simplifies snapshot testing by ensuring a consistent set of variants and that every view has a name.
+
+Rendering the same view under multiple variants (dark mode, RTL, large text, accessibility) gives you broader coverage from a single preview. `SnapshotTest` renders every variant emitted by the preview, so each `previewVariant(named:)` below becomes its own snapshot image and sidecar. SwiftUI provides most variant inputs (`.dynamicTypeSize(.xxxLarge)`, `.environment(\.layoutDirection, .rightToLeft)`, etc.). The package adds `.snapshotAccessibility(true)`, which overlays VoiceOver elements on the snapshot.
+
+The [`PreviewVariants` view](https://github.com/EmergeTools/SnapshotPreviews/blob/main/Examples/DemoApp/DemoApp/TestViews/PreviewVariants.swift) in the example app automates RTL, landscape, accessibility, dark mode, and large-text variants:
+
+```swift
+struct MyView_Previews: PreviewProvider {
+  static var previews: some View {
+    PreviewVariants(layout: .sizeThatFits) {
+      MyView(mode: .loaded)
+        .previewVariant(named: "My View - Loaded")
+
+      MyView(mode: .loading)
+        .previewVariant(named: "My View - Loading")
+
+      MyView(mode: .error)
+        .previewVariant(named: "My View - Error")
+    }
+  }
+}
+```
+
+# Additional Features
+
+## Preview rendering check (no PNGs)
+
+If you only want to verify that every preview lays out without crashing — for example, to catch a missing `@EnvironmentObject` — inherit from `PreviewLayoutTest` instead of `SnapshotTest`. It runs the same discovery pipeline but skips the image render, so it's significantly faster. This gives you *preview coverage* (every preview was exercised); it does not produce Xcode code-coverage data.
 
 ## Preview Gallery
 
-`PreviewGallery` is an interactive UI built on top of snapshot extraction. It turns your Xcode previews into a gallery of components and features you can access from your application, for example in an internal settings screen. **Xcode is not required to view the previews.** You can use it to preview individual components (buttons/rows/icons/etc) or even entire interactive features.
+`PreviewGallery` is an interactive SwiftUI view that turns your previews into a browsable gallery of components — useful for internal builds where Xcode isn't available. Link your app to the `PreviewGallery` product and present it from wherever makes sense:
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/image1.png" />
 </p>
-
-The public API of PreviewGallery is a single SwiftUI `View` named `PreviewGallery`. Displaying this view gives you access to the full gallery. For example, you could add a button to open the gallery like this:
 
 ```swift
 import SwiftUI
@@ -41,51 +253,9 @@ struct InternalSettingsView: View {
 }
 ```
 
-## Local Snapshot Generation
+## Accessibility audits
 
-Generate PNGs for each Xcode preview with no code as part of an XCTest. Link your XCTest target to `SnapshottingTests` and create a test that inherits from `SnapshotTest` like this:
-
-```swift
-import SnapshottingTests
-
-class DemoAppPreviewTest: SnapshotTest {
-
-  // Return the type names of previews like "MyApp.MyView._Previews" to selectively render only some previews
-  override class func snapshotPreviews() -> [String]? {
-    return nil
-  }
-
-  // Use this to exclude some previews from generating
-  override class func excludedSnapshotPreviews() -> [String]? {
-    return nil
-  }
-}
-```
-
-Note that there are no test functions; they are automatically added at runtime by `SnapshotTest`. You can return a list of previews from the `snapshotPreviews()` function based on what preview you are trying to locally validate. The snapshots will be added as attachments in Xcode’s test results.
-
-### Module-level filters
-
-You can also filter previews by module name using exact string matching:
-
-```swift
-// Only snapshot previews from these modules
-override class func snapshotPreviewModules() -> [String]? { ["MyFeatureModule"] }
-
-// Skip previews from these modules
-override class func excludedSnapshotPreviewModules() -> [String]? { ["LegacyModule"] }
-```
-
-> [!NOTE]
-> When you use Preview macros (`#Preview("Display Name")`) the name of the snapshot uses the file path and the name, for example: "MyModule/MyFile.swift:Display Name"
-
-![Screenshot of Xcode test output](https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/testOutput.png)
-
-The [EmergeTools snapshot testing service](https://docs.emergetools.com/docs/snapshot-testing) generates snapshots and diffs them in the cloud to control for sources of flakiness, store images outside of git, and optimize test performance. `SnapshotTest` is for locally debugging these snapshot tests. You can also use `PreviewLayoutTest` to get code coverage of all previews in your unit test without generating PNGs. This will validate that previews do not crash (such as a missing @EnvironmentObject) but runs faster because it does not render the views to images.
-
-## Accessibility Audits
-
-Xcode [accessibility audits](https://developer.apple.com/documentation/xctest/xcuiapplication/4191487-performaccessibilityaudit) can also be run locally on any preview. They are run in a UI test (not unit test). To enable these, inherit from `AccessibilityPreviewTest`. To customize the behavior you can override the following functions in your test:
+Xcode [accessibility audits](https://developer.apple.com/documentation/xctest/xcuiapplication/4191487-performaccessibilityaudit) can run on every preview as part of a UI test. Inherit from `AccessibilityPreviewTest` and override the audit type / issue handler as needed:
 
 ```swift
 import SnapshottingTests
@@ -103,102 +273,21 @@ class DemoAppAccessibilityPreviewTest: AccessibilityPreviewTest {
 }
 ```
 
-See the demo app for a full example.
+See the demo app under `Examples/` for a full example.
 
 <details>
   <summary>How does it work?</summary>
 
-  The XCTest dynamically inserts test functions by creating functions using the Objective-C runtime and overriding XCTest’s `testInvocations` function.
+  The XCTest dynamically inserts test functions by creating methods through the Objective-C runtime and overriding XCTest's `testInvocations`.
 
-  Previews are discovered in the binary by parsing the `__swift5_proto` Mach-O section to see what types conform to `PreviewProvider` (and similar protocols generated by the #Preview macro). Details of how this works in the Swift runtime can be found in our [blog post](https://www.emergetools.com/blog/posts/SwiftProtocolConformance).
+  Previews are discovered in the test binary by parsing the `__swift5_proto` Mach-O section to find types that conform to `PreviewProvider` (and the related protocols generated by the `#Preview` macro). Background on how this works in the Swift runtime: [The Surprising Cost of Protocol Conformances in Swift](https://www.emergetools.com/blog/posts/SwiftProtocolConformance).
 </details>
 
-# Installation
+# Related Reading
 
-Add the package dependency to your Xcode project using the URL of this repository (https://github.com/EmergeTools/SnapshotPreviews).
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/EmergeTools/SnapshotPreviews/master/images/image2.png" />
-</p>
-
-Link your app to `PreviewGallery` and (optionally) to `SnapshotPreferences` to customize the behavior of snapshot generation.
-Link your XCTest target to `SnapshottingTests`.
-
-# Tips
-
-### Unique names
-
-It’s strongly encouraged to use a display name for every preview, for example:
-
-```swift
-struct MyView_Previews: PreviewProvider {
-  var previews: some View {
-    MyView().previewDisplayName("My Display Name")
-    // Note if you had more than one view here they should all have different display names.
-  }
-}
-
-#Preview("My Display Name") {
-  MyView()
-}
-```
-
-The display name will show up in XCTest results and the EmergeTools UI. Display names should be unique within each PreviewProvider or within files in the case of preview macros.
-
-### Environment variables
-
-It’s recommended to set the environment variable `XCODE_RUNNING_FOR_PREVIEWS` to `1` in your unit test scheme. This is also set when snapshots are generated from the EmergeTools snapshot testing service. Combine it with the Xcode previews variable like this:
-
-```swift
-extension ProcessInfo {
-  var isRunningPreviews: Bool {
-    environment["EMERGE_IS_RUNNING_FOR_SNAPSHOTS"] == "1" || environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-  }
-}
-```
-
-Check `ProcessInfo.isRunningPeviews` to disable behavior you don’t want in previews such as emitting logging data.
-
-#### CI export for Sentry Snapshots
-
-Set `TEST_RUNNER_SNAPSHOTS_EXPORT_DIR` to a directory path in your CI environment to export snapshot PNGs and JSON metadata sidecars to disk instead of attaching them to the XCTest results bundle. This is used by [Sentry Snapshots](https://docs.sentry.io/product/snapshots/) to upload images for visual diffing.
-
-```yaml
-env:
-  TEST_RUNNER_SNAPSHOTS_EXPORT_DIR: "${{ github.workspace }}/snapshot-images"
-```
-
-### Variants
-
-> [!TIP]
-> Using PreviewVariants greatly simplifies snapshot testing, by ensuring a consistent set of variants and that every view is provided a name.
-
-Using multiple variants of the same view can ensure test coverage of all the ways users interact with your UI. Most are provided by SwiftUI, eg: `.dynamicTypeSize(.xxxLarge)`. There is one built into the package: `.emergeAccessibility(true)`. This function adds a visualization of voice over elements to your snapshot. You can automatically add variants using the [`PreviewVariants` View](https://github.com/EmergeTools/SnapshotPreviews/blob/main/Examples/DemoApp/DemoApp/TestViews/PreviewVariants.swift) that is demonstrated in the example app. It adds RTL, landscape, accessibility, dark mode and large text variants. You can use it like this:
-
-```swift
-struct MyView_Previews: PreviewProvider {
-  static var previews: some View {
-    PreviewVariants(layout: .sizeThatFits) {
-      MyView(mode: .loaded)
-        // PreviewVariants requires that every view has a name, so you can’t create one without a display name
-        .previewVariant(named: "My View - Loaded")
-
-      MyView(mode: .loading)
-        .previewVariant(named: "My View - Loading")
-
-      MyView(mode: .error)
-        .previewVariant(named: "My View - Error")
-    }
-  }
-}
-```
+- [How to use VariadicView, SwiftUI's Private View API](https://www.emergetools.com/blog/posts/how-to-use-variadic-view) — `VariadicView` is how multiple images are rendered for one `PreviewProvider`.
+- [The Surprising Cost of Protocol Conformances in Swift](https://www.emergetools.com/blog/posts/SwiftProtocolConformance) — how preview types are discovered in app binaries.
 
 # Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=EmergeTools/SnapshotPreviews&type=Date)](https://star-history.com/#EmergeTools/SnapshotPreviews&Date)
-
-# Related Reading
-- [How to use VariadicView, SwiftUI's Private View API](https://www.emergetools.com/blog/posts/how-to-use-variadic-view): VariadicView is a core part of how multiple images are rendered for one PreviewProvider.
-- [The Surprising Cost of Protocol Conformances in Swift](https://www.emergetools.com/blog/posts/SwiftProtocolConformance): Details of how protocol conformances work in the runtime, which is how previews are discovered in app binaries.
-- [Emerge Android](https://github.com/EmergeTools/emerge-android): The android SDK for similar preview based snapshot testing, along with other EmergeTools features.
-- [ETTrace](https://github.com/EmergeTools/ETTrace): Another open source iOS project from EmergeTools.

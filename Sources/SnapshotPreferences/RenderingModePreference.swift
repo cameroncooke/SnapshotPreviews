@@ -18,7 +18,7 @@ struct RenderingModePreferenceKey: PreferenceKey {
 }
 
 extension View {
-    /// Sets the emerge rendering mode for the view.
+    /// Sets the rendering mode used to snapshot the view.
     ///
     /// Use this method to control how the view is rendered for snapshots. You can indicate whether
     /// to use `.coreAnimation` which will use the CALayer from Quartz or `.uiView` which will use
@@ -36,8 +36,8 @@ extension View {
     /// ```swift
     /// struct ContentView: View {
     ///     var body: some View {
-    ///         Text("Emerge Effect")
-    ///             .emergeRenderingMode(.coreAnimation)
+    ///         MyView()
+    ///             .snapshotRenderingMode(.coreAnimation)
     ///     }
     /// }
     /// ```
@@ -46,7 +46,7 @@ extension View {
     @available(watchOS, unavailable)
     @available(visionOS, unavailable)
     @available(tvOS, unavailable)
-    public func emergeRenderingMode(_ renderingMode: EmergeRenderingMode?) -> some View {
+    public func snapshotRenderingMode(_ renderingMode: EmergeRenderingMode?) -> some View {
         preference(key: RenderingModePreferenceKey.self, value: renderingMode?.rawValue)
     }
 }

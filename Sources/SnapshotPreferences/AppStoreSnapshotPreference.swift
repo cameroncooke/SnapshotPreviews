@@ -19,8 +19,8 @@ struct AppStoreSnapshotPreferenceKey: PreferenceKey {
 }
 
 extension View {
-    /// Marks a snapshot for use with our App Store screenshot editing tool. This should ideally be used with a
-    /// full-size preview matching one of our supported devices.
+    /// Marks a snapshot as an App Store screenshot. This should ideally be used with a
+    /// full-size preview matching one of the supported devices.
     ///
     /// - Note: This method is only available on iOS. It is unavailable on macOS, watchOS, visionOS, and tvOS.
     ///
@@ -34,7 +34,7 @@ extension View {
     /// struct ContentView: View {
     ///     var body: some View {
     ///         Text("My App Store listing!")
-    ///             .emergeAppStoreSnapshot(true)
+    ///             .snapshotAppStore(true)
     ///     }
     /// }
     /// ```
@@ -42,7 +42,7 @@ extension View {
     @available(watchOS, unavailable)
     @available(visionOS, unavailable)
     @available(tvOS, unavailable)
-    public func emergeAppStoreSnapshot(_ enabled: Bool?) -> some View {
+    public func snapshotAppStore(_ enabled: Bool?) -> some View {
         preference(key: AppStoreSnapshotPreferenceKey.self, value: enabled)
     }
 }

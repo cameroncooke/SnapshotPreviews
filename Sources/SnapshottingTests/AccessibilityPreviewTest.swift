@@ -103,6 +103,8 @@ open class AccessibilityPreviewTest: PreviewBaseTest, PreviewFilters {
     }
 
     var launchEnvironment = app.launchEnvironment
+    launchEnvironment["RUNNING_FOR_SNAPSHOTS"] = "1"
+    // Deprecated alias kept for back-compat with apps that still read the old variable.
     launchEnvironment["EMERGE_IS_RUNNING_FOR_SNAPSHOTS"] = "1"
     launchEnvironment["DYLD_INSERT_LIBRARIES"] = path
 

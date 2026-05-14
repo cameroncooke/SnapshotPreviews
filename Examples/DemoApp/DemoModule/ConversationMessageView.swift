@@ -68,6 +68,9 @@ struct ConversationCellView_Previews: PreviewProvider {
 
 extension ProcessInfo {
   var isPreviews: Bool {
-    self.environment["EMERGE_IS_RUNNING_FOR_SNAPSHOTS"] == "1" || self.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    environment["RUNNING_FOR_SNAPSHOTS"] == "1"
+      || environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+      // Deprecated alias from the legacy Emerge integration.
+      || environment["EMERGE_IS_RUNNING_FOR_SNAPSHOTS"] == "1"
   }
 }
